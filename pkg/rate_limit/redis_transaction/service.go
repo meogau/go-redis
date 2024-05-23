@@ -3,14 +3,16 @@ package redis_transaction
 import (
 	"context"
 	"github.com/go-redis/redis/v8"
-	"go-redis/basic_service"
+	"go-redis/pkg/basic_service"
+	"go-redis/pkg/rate_limit/manage_request_cnt"
 )
 
 type Service struct {
-	BaseService         *basic_service.Service
-	ClusterQueueName    string
-	Limit               int
-	TimeWindowInSeconds int // limit ${limit} requests per ${timeWindowInSeconds} seconds
+	BaseService               *basic_service.Service
+	ClusterQueueName          string
+	Limit                     int
+	TimeWindowInSeconds       int // limit ${limit} requests per ${timeWindowInSeconds} seconds
+	ManageRequestCountService *manage_request_cnt.Service
 }
 
 func (s *Service) AddInstanceToCluster(instanceID string) error {
@@ -45,5 +47,8 @@ func (s *Service) GetInstanceRateLimit() (string, error) {
 		}
 		return nil
 	}, s.ClusterQueueName)
+	if err == nil && len(instance) > 0 {
+		s.ManageRequestCountService.PushDecreaseRequestCountMessage(instance)
+	}
 	return instance, err
 }

@@ -2,14 +2,16 @@ package lua_script
 
 import (
 	"fmt"
-	"go-redis/basic_service"
+	"go-redis/pkg/basic_service"
+	"go-redis/pkg/rate_limit/manage_request_cnt"
 )
 
 type Service struct {
-	BaseService         *basic_service.Service
-	ClusterQueueName    string
-	Limit               int
-	TimeWindowInSeconds int // limit ${limit} requests per ${timeWindowInSeconds} seconds
+	BaseService               *basic_service.Service
+	ClusterQueueName          string
+	Limit                     int
+	TimeWindowInSeconds       int // limit ${limit} requests per ${timeWindowInSeconds} seconds
+	ManageRequestCountService *manage_request_cnt.Service
 }
 
 func (s *Service) AddInstanceToCluster(instanceID string) error {
@@ -34,6 +36,8 @@ func (s *Service) GetInstanceRateLimit() (string, error) {
 	if err != nil || cmd == nil {
 		return "", err
 	} else {
-		return cmd.([]interface{})[0].(string), err
+		instanceIp := cmd.([]interface{})[0].(string)
+		s.ManageRequestCountService.PushDecreaseRequestCountMessage(instanceIp)
+		return instanceIp, err
 	}
 }
